@@ -16,12 +16,12 @@ def runcmd(cmd, verbose=False):
     pass
 
 
-def get_exoVista_data():
+def get_data(universes=np.arange(1, 13)):
     # Iterate over the different universes
-    for n in tqdm(np.arange(1, 13), position=0, desc="Universe", leave=False):
+    for n in tqdm(universes, position=0, desc="Universe", leave=False):
         universe_url = f"https://ckan-files.emac.gsfc.nasa.gov/exovista/DEC21/\
                 {n}/target_database.csv"
-        Path(f"exoVista_data/{n}/").mkdir(exist_ok=True)
+        Path(f"exoVista_data/{n}/").mkdir(parents=True)
         if not Path(f"exoVista_data/{n}/target_database.csv").exists():
             runcmd(f"wget --directory-prefix={n} {universe_url}", verbose=False)
         df = pd.read_csv(f"exoVista_data/{n}/target_database.csv", low_memory=False)
