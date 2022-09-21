@@ -27,6 +27,7 @@ class System:
         # loop over all planets
         for i in range(nplanets):
             self.planets.append(SystemObject(infile, planet_ext + i))
+        self.file = infile
 
     def get_rv(self):
         """
