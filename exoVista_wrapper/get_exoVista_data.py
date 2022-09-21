@@ -6,7 +6,7 @@ import pandas as pd
 from tqdm import tqdm
 
 
-def runcmd(cmd, verbose=False, *args, **kwargs):
+def runcmd(cmd, verbose=False):
     process = subprocess.Popen(
         cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, shell=True
     )
