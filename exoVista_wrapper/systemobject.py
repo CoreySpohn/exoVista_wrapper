@@ -9,16 +9,11 @@ class SystemObject:
     Class for the planets and stars in the exoVista systems
     """
 
-    def __init__(self, infile, obj_ext, nplanets, i):
+    def __init__(self, infile, obj_ext):
 
         # Get the object's data from the fits file
-        try:
-            with open(infile, "rb") as f:
-                obj_data, obj_header = getdata(
-                    f, ext=obj_ext, header=True, memmap=False
-                )
-        except:
-            breakpoint()
+        with open(infile, "rb") as f:
+            obj_data, obj_header = getdata(f, ext=obj_ext, header=True, memmap=False)
 
         # Time data
         self.t = obj_data[:, 0] * u.yr

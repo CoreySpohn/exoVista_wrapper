@@ -26,4 +26,6 @@ class Universe:
         for system_file in tqdm(
             system_files, desc="Loading systems", position=0, leave=False
         ):
-            self.systems.append(System(system_file))
+            system = System(system_file)
+            if system is not None:
+                self.systems.append(system)

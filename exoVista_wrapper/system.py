@@ -22,11 +22,11 @@ class System:
             # Catch error where part of the fits doesn't load
             return None
 
-        self.star = SystemObject(infile, star_ext, 0, 0)
+        self.star = SystemObject(infile, star_ext)
         self.planets = []
         # loop over all planets
         for i in range(nplanets):
-            self.planets.append(SystemObject(infile, planet_ext + i, nplanets, i))
+            self.planets.append(SystemObject(infile, planet_ext + i))
 
     def get_rv(self):
         """
