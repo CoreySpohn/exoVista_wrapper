@@ -21,17 +21,17 @@ def get_data(universes=np.arange(1, 13)):
     for n in tqdm(universes, position=0, desc="Universe", leave=False):
         universe_url = f"https://ckan-files.emac.gsfc.nasa.gov/exovista/DEC21/\
                 {n}/target_database.csv"
-        Path(f"exoVista_data/{n}/").mkdir(parents=True)
-        if not Path(f"exoVista_data/{n}/target_database.csv").exists():
+        Path(f"data/{n}/").mkdir(parents=True)
+        if not Path(f"data/{n}/target_database.csv").exists():
             runcmd(f"wget --directory-prefix={n} {universe_url}", verbose=False)
-        df = pd.read_csv(f"exoVista_data/{n}/target_database.csv", low_memory=False)
+        df = pd.read_csv(f"data/{n}/target_database.csv", low_memory=False)
         for i in tqdm(
             np.arange(1, df.shape[0]), position=1, desc="Planet", leave=False
         ):
             fit_url = df.at[i, "URL"]
             # fit_url = row['URL']
-            if not Path(f"exoVista_data/{n}/{fit_url.split('/')[-1]}").exists():
+            if not Path(f"data/{n}/{fit_url.split('/')[-1]}").exists():
                 runcmd(
-                    f"wget --directory-prefix=exoVista_data/{n} {fit_url}",
+                    f"wget --directory-prefix=data/{n} {fit_url}",
                     verbose=False,
                 )
