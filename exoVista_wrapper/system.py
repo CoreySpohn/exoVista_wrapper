@@ -1,7 +1,5 @@
 import astropy.io.fits
-import astropy.units as u
 import numpy as np
-import pandas as pd
 from systemobject import SystemObject
 
 
@@ -32,5 +30,5 @@ class System:
             planet_rv[:, i] = planet.vz
 
         star_rv = star_rv * self.star.vz.unit
-        planet_rv = planet_rv * planet.vz.unit
+        planet_rv = planet_rv * self.planets[0].vz.unit
         return star_rv, planet_rv
