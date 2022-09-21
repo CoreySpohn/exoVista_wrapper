@@ -19,11 +19,10 @@ def runcmd(cmd, verbose=False):
 def get_data(universes=np.arange(1, 13)):
     # Iterate over the different universes
     for n in tqdm(universes, position=0, desc="Universe", leave=False):
-        universe_url = f"https://ckan-files.emac.gsfc.nasa.gov/exovista/DEC21/\
-                {n}/target_database.csv"
-        Path(f"data/{n}/").mkdir(parents=True)
+        universe_url = f"https://ckan-files.emac.gsfc.nasa.gov/exovista/DEC21/{n}/target_database.csv"
+        Path(f"data/{n}/").mkdir(parents=True, exist_ok=True)
         if not Path(f"data/{n}/target_database.csv").exists():
-            runcmd(f"wget --directory-prefix={n} {universe_url}", verbose=False)
+            runcmd(f"wget --directory-prefix=data/{n} {universe_url}", verbose=False)
         df = pd.read_csv(f"data/{n}/target_database.csv", low_memory=False)
         for i in tqdm(
             np.arange(1, df.shape[0]), position=1, desc="Planet", leave=False

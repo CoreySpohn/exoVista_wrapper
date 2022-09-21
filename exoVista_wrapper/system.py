@@ -1,6 +1,7 @@
 import astropy.io.fits
 import numpy as np
-from systemobject import SystemObject
+
+from exoVista_wrapper.systemobject import SystemObject
 
 
 class System:
