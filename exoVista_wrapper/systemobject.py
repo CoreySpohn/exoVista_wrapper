@@ -1,6 +1,7 @@
 import astropy.io.fits
 import astropy.units as u
 import pandas as pd
+from astropy.io.fits import getdata
 
 
 class SystemObject:
@@ -8,10 +9,16 @@ class SystemObject:
     Class for the planets and stars in the exoVista systems
     """
 
-    def __init__(self, infile, obj_ext):
+    def __init__(self, infile, obj_ext, nplanets, i):
 
         # Get the object's data from the fits file
-        obj_data, obj_header = astropy.io.fits.getdata(infile, ext=obj_ext, header=True)
+        try:
+            with open(infile, "rb") as f:
+                obj_data, obj_header = getdata(
+                    f, ext=obj_ext, header=True, memmap=False
+                )
+        except:
+            breakpoint()
 
         # Time data
         self.t = obj_data[:, 0] * u.yr
@@ -70,13 +77,13 @@ class SystemObject:
             # Spectral properties
             self.spectral_type = obj_header["TYPE"]
             self.MV = obj_header["M_V"]  # Absolute V band mag
-            self.Bmag = obj_header["BMAG"]
-            self.Vmag = obj_header["VMAG"]
-            self.Rmag = obj_header["RMAG"]
-            self.Imag = obj_header["IMAG"]
-            self.Jmag = obj_header["JMAG"]
-            self.Hmag = obj_header["HMAG"]
-            self.Kmag = obj_header["KMAG"]
+            # self.Bmag = obj_header["BMAG"]
+            # self.Vmag = obj_header["VMAG"]
+            # self.Rmag = obj_header["RMAG"]
+            # self.Imag = obj_header["IMAG"]
+            # self.Jmag = obj_header["JMAG"]
+            # self.Hmag = obj_header["HMAG"]
+            # self.Kmag = obj_header["KMAG"]
 
             # Stellar properties
             self.Lstar = obj_header["LSTAR"] * u.Lsun  # Bolometric luminosity
@@ -105,9 +112,10 @@ def get_object_data(inputfile, planet_ext, nplanets):
     """
     planet_dicts = {}
     for i in range(nplanets):  # loop over all planets
-        planet_data, planet_header = astropy.io.fits.getdata(
-            inputfile, ext=planet_ext + i, header=True
-        )
+        with open(inputfile, "rb") as f:
+            planet_data, planet_header = getdata(
+                f, ext=planet_ext + i, header=True, memmap=False
+            )
         elements = load_planet_elements(planet_data, planet_header)
         planet_dicts[i] = elements
     planets_df = pd.DataFrame.from_dict(planet_dicts, orient="index")
