@@ -1,4 +1,3 @@
-import astropy.io.fits
 import astropy.units as u
 import pandas as pd
 from astropy.io.fits import getdata
@@ -72,6 +71,9 @@ class SystemObject:
             # Spectral properties
             self.spectral_type = obj_header["TYPE"]
             self.MV = obj_header["M_V"]  # Absolute V band mag
+
+            # Commenting out for now, these are available but
+            # not every star has all the information
             # self.Bmag = obj_header["BMAG"]
             # self.Vmag = obj_header["VMAG"]
             # self.Rmag = obj_header["RMAG"]

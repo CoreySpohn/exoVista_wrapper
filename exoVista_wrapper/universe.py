@@ -40,8 +40,6 @@ class Universe:
                         system = pickle.load(f)
                 else:
                     system = System(system_file)
-                    if system is not None:
-                        continue
                     with open(cache_file, "wb") as f:
                         pickle.dump(system, f)
                 self.systems.append(system)
