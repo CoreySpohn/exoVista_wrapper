@@ -130,3 +130,6 @@ dmypy.json
 
 # git folder
 .git/
+
+# data folder
+data/
