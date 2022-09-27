@@ -2,6 +2,7 @@ import subprocess
 from pathlib import Path
 
 import astropy.io.fits as fits
+import astropy.units as u
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -77,3 +78,63 @@ def check_data(file):
         # says exists, delete file
         file.unlink()
     return failure
+
+
+def plot_planet_positions(ax, system, cmap, ind):
+    """
+    Put each planet in the scatter plot
+
+    Args:
+        ax (matplotlib axis):
+            figure axis
+        system (System object):
+            Object holding all of the system data
+        cmap (matplotlib colormap):
+            colormap used for the plot
+        ind (integer):
+            The index value to plot
+
+    Returns:
+        ax (matplotlib axis):
+            figure axis
+
+    """
+    cvals = np.linspace(0, 1, len(system.planets))
+    for i, planet in enumerate(system.planets):
+        color = cmap(cvals[i])
+        ms = planet_marker_size(
+            planet.vectors.at[ind, "z"] * u.m,
+            planet.vectors.z * u.m,
+            base_size=5 + planet.radius.to(u.R_earth).value,
+            factor=0.1,
+        )
+        ax.scatter(
+            planet.vectors.x[ind] * (u.m.to(u.AU)),
+            planet.vectors.y[ind] * (u.m.to(u.AU)),
+            label=f"Planet {i}",
+            color=color,
+            s=ms,
+        )
+        ax.set_xlim([-8, 8])
+        ax.set_ylim([-8, 8])
+    return ax
+
+
+def planet_marker_size(z, all_z, base_size=5, factor=0.5):
+    """
+    Make the planet marker smaller when the planet is behind the star in its orbit
+    """
+    z_range = np.abs(max(all_z) - min(all_z))
+
+    # Want being at max z to correspond to a factor of 1 and min z
+    # to be a factor of negative 1
+    scaled_z = (
+        2
+        * (z.decompose().value - min(all_z).decompose().value)
+        / z_range.decompose().value
+        - 1
+    )
+
+    marker_size = base_size * (1 + factor * scaled_z)
+
+    return marker_size
