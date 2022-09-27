@@ -57,27 +57,7 @@ class System:
                 vy=planet._vy[0].decompose().value,
                 vz=planet._vz[0].decompose().value,
             )
-        self.sim.move_to_com()
-
-    def get_rv(self, t):
-        """
-        Calculate the radial velocity of the system
-
-        Args:
-            t (Astropy Time array):
-                Astropy time quantities that RV values are desired for
-
-        Returns:
-            rv (Astropy Quantity array):
-                Star's radial velocity in z direction
-        """
-        rv = np.zeros(len(t)) * u.m / u.s
-        for planet in self.planets:
-            pv = planet.calc_vectors(t, return_r=True)
-            x, y, z = pv[:, 0], pv[:, 1], pv[:, 2]
-            vz = planet.calc_vs(t)
-            rv += vz
-        return rv
+        # self.sim.move_to_com()
 
     def propagate_system(self, t):
         """
