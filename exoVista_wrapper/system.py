@@ -96,11 +96,15 @@ class System:
                     "vz": [p.vz],
                 }
                 if j == 0:
+                    if time in self.star.vectors["t"]:
+                        continue
                     self.star.vectors = pd.concat(
                         [self.star.vectors, pd.DataFrame(p_vectors)]
                     )
                 else:
                     planet = self.planets[j - 1]
+                    if time in planet.vectors["t"]:
+                        continue
                     planet.vectors = pd.concat(
                         [planet.vectors, pd.DataFrame(p_vectors)]
                     )
