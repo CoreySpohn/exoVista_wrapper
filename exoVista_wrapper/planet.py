@@ -2,6 +2,7 @@ import astropy.constants as const
 import astropy.units as u
 import numpy as np
 import pandas as pd
+import radvel.orbit as rvo
 from astropy.io.fits import getdata
 from astropy.time import Time
 from keplertools import fun as kt
@@ -59,6 +60,30 @@ class Planet:
 
         # Gravitational parameter
         self.mu = (const.G * (self.mass + star.mass)).decompose()
+        self.T = (2 * np.pi * np.sqrt(self.a**3 / self.mu)).to(u.d)
+        self.w_p = self.w
+        self.w_s = (self.w + np.pi * u.rad) % (2 * np.pi * u.rad)
+        self.secosw = np.sqrt(self.e) * np.cos(self.w)
+        self.sesinw = np.sqrt(self.e) * np.sin(self.w)
+
+        # Because we have the mean anomaly at an epoch we can calculate the
+        # time of periastron as t0 - T_e where T_e is the time since periastron
+        # passage
+        T_e = (self.T * self.M0 / (2 * np.pi * u.rad)).decompose()
+        self.T_p = self.t0 - T_e
+
+        # Calculate the time of conjunction
+        self.T_c = Time(
+            rvo.timeperi_to_timetrans(
+                self.T_p.jd, self.T.value, self.e, self.w_s.value
+            ),
+            format="jd",
+        )
+        self.K = (
+            (2 * np.pi * const.G / self.T) ** (1 / 3.0)
+            * (self.mass * np.sin(self.i) / star.mass ** (2 / 3.0))
+            * (1 - self.e**2) ** (-1 / 2)
+        ).decompose()
 
         # Mean angular motion
         self.n = (np.sqrt(self.mu / self.a**3)).decompose()
@@ -77,6 +102,8 @@ class Planet:
         )
 
         self.star = star
+
+        self.classify_planet()
 
     def calc_vectors(self, t, return_r=True, return_v=False):
         """
@@ -247,3 +274,82 @@ class Planet:
         M1 = (self.n * t).decompose() * u.rad
         M = ((M1 + self.M0).to(u.rad)) % (2 * np.pi * u.rad)
         return M
+
+    def classify_planet(self):
+        """
+        This determines the Kopparapu bin of the planet
+        This is adapted from the EXOSIMS SubtypeCompleteness method classifyPlanets so that EXOSIMS isn't a mandatory import
+        """
+        # Calculate the luminosity of the star, assuming main-sequence
+        if self.mass < 2 * u.M_sun:
+            self.Ls = const.L_sun * (self.star.mass / const.M_sun) ** 4
+        else:
+            self.Ls = 1.4 * const.L_sun * (self.star.mass / const.M_sun) ** 3.5
+
+        Rp = self.radius.to("earthRad").value
+        a = self.a.to("AU").value
+        e = self.e
+
+        # Find the stellar flux at the planet's location as a fraction of earth's
+        earth_Lp = const.L_sun / (1 * (1 + (0.0167**2) / 2)) ** 2
+        self.Lp = (
+            self.Ls / (self.a.to("AU").value * (1 + (self.e**2) / 2)) ** 2 / earth_Lp
+        )
+
+        # Find Planet Rp range
+        Rp_bins = np.array([0, 0.5, 1.0, 1.75, 3.5, 6.0, 14.3, 11.2 * 4.6])
+        Rp_lo = Rp_bins[:-1]
+        Rp_hi = Rp_bins[1:]
+        Rp_types = [
+            "Sub-Rocky",
+            "Rocky",
+            "Super-Earth",
+            "Sub-Neptune",
+            "Sub-Jovian",
+            "Jovian",
+            "Super-Jovian",
+        ]
+        # self.L_bins = np.array(
+        #     [
+        #         [1000, 182, 1.0, 0.28, 0.0035, 5e-5],
+        #         [1000, 182, 1.0, 0.28, 0.0035, 5e-5],
+        #         [1000, 187, 1.12, 0.30, 0.0030, 5e-5],
+        #         [1000, 188, 1.15, 0.32, 0.0030, 5e-5],
+        #         [1000, 220, 1.65, 0.45, 0.0030, 5e-5],
+        #         [1000, 220, 1.65, 0.40, 0.0025, 5e-5],
+        #         [1000, 220, 1.68, 0.45, 0.0025, 5e-5],
+        #         [1000, 220, 1.68, 0.45, 0.0025, 5e-5],
+        #     ]
+        # )
+        self.L_bins = np.array(
+            [
+                [1000, 182, 1.0, 0.28, 0.0035, 5e-5],
+                [1000, 187, 1.12, 0.30, 0.0030, 5e-5],
+                [1000, 188, 1.15, 0.32, 0.0030, 5e-5],
+                [1000, 220, 1.65, 0.45, 0.0030, 5e-5],
+                [1000, 220, 1.65, 0.40, 0.0025, 5e-5],
+            ]
+        )
+
+        # Find the bin of the radius
+        self.Rp_bin = np.digitize(Rp, Rp_bins) - 1
+        try:
+            self.Rp_type = Rp_types[self.Rp_bin]
+        except:
+            print(f"Error handling Rp_type of planet with Rp_bin of {self.Rp_bin}")
+            self.Rp_type = None
+
+        # TODO Fix this to give correct when at edge cases since technically they're not straight lines
+
+        # index of planet temp. cold,warm,hot
+        L_types = ["Very Hot", "Hot", "Warm", "Cold", "Very Cold"]
+        specific_L_bins = self.L_bins[self.Rp_bin, :]
+        self.L_bin = np.digitize(self.Lp.decompose().value, specific_L_bins) - 1
+        try:
+            self.L_type = L_types[self.L_bin]
+        except:
+            print(f"Error handling L_type of planet with L_bin of {self.L_bin}")
+
+        # Now assign the colors that will get used when plotting
+        self.subtype_color = ["red", "yellow", "blue", "black", "green"][self.L_bin]
+        self.subtype_marker = [".", "X", "P", "v", "s", "D", "H", "<"][self.Rp_bin]

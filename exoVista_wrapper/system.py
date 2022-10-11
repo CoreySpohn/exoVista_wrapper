@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import rebound
 from astropy.io.fits import getheader
+from astropy.time import Time
 from tqdm import tqdm
 
 from exoVista_wrapper.planet import Planet
@@ -64,6 +65,8 @@ class System:
         Propage system with rebound
         """
         for time in tqdm(t, desc="System propagation"):
+            if time in self.star.vectors["t"].values:
+                continue
             self.sim.integrate(time)
             for j, p in enumerate(self.sim.particles):
                 p_vectors = {
@@ -76,18 +79,78 @@ class System:
                     "vz": [p.vz],
                 }
                 if j == 0:
-                    if time in self.star.vectors["t"]:
-                        continue
                     self.star.vectors = pd.concat(
                         [self.star.vectors, pd.DataFrame(p_vectors)]
                     )
                 else:
                     planet = self.planets[j - 1]
-                    if time in planet.vectors["t"]:
-                        continue
                     planet.vectors = pd.concat(
                         [planet.vectors, pd.DataFrame(p_vectors)]
                     )
-        self.star.vectors = self.star.vectors.sort_values("t").reset_index()
+        self.star.vectors.sort_values("t", inplace=True)
+        self.star.vectors.reset_index(drop=True, inplace=True)
         for planet in self.planets:
-            planet.vectors = planet.vectors.sort_values("t").reset_index()
+            planet.vectors.sort_values("t", inplace=True)
+            planet.vectors.reset_index(drop=True, inplace=True)
+
+    def simulate_rv_observations(self, times, error):
+
+        # Propagate system so the star has the true RV values
+        self.propagate_system(times)
+
+        rv_error = error.decompose().value
+        # Save the rv observation times
+        self.rv_observation_times = Time(times, format="jd")
+        # Create a dataframe to hold the planet data
+        column_names = ["time", "truevel", "tel", "svalue", "time_year"]
+
+        rv_data_df = pd.DataFrame(
+            0, index=np.arange(len(times)), columns=column_names, dtype=object
+        )
+        # nu_array = np.zeros([len(times), 2])
+        nu_array = np.zeros(len(times))
+
+        star_df = self.star.vectors[self.star.vectors["t"].isin(times)]
+
+        # Loop through the times and calculate the radial velocity at the desired time
+        for i, row in star_df.iterrows():
+            # M = planet.mean_anom(t)
+            # E = kt.eccanom(M.value, planet.e)
+            # nu = kt.trueanom(E, planet.e) * u.rad
+            t_yr = (row.t * u.s).to(u.yr).value
+            rv_data_df.at[i, "time"] = Time(
+                t_yr, format="decimalyear"
+            ).jd  # Time of observation in julian days
+            rv_data_df.at[i, "time_year"] = t_yr
+            # Velocity at observation in m/s
+            rv_data_df.at[i, "truevel"] = row.vz
+            # This is saying it's all the same inst
+            rv_data_df.at[i, "tel"] = "i"
+
+            # appending to nu array
+            # nu_array[i] = nu[0].to(u.rad).value
+        # Calculate a random velocity offset or error based on the rv uncertainty
+        vel_offset = np.random.normal(scale=rv_error, size=len(times))
+        vel_offset_df = pd.DataFrame({"err_offset": vel_offset})
+        rv_data_df = pd.concat([rv_data_df, vel_offset_df], axis=1)  # Append
+
+        # This is simply an array of the one sigma error with some noise added
+        errvel = np.ones(len(times)) * rv_error + np.random.normal(
+            scale=rv_error / 10, size=len(times)
+        )
+        errvel_df = pd.DataFrame({"errvel": errvel})
+        rv_data_df = pd.concat([rv_data_df, errvel_df], axis=1)
+
+        # Add the errors onto the velocities
+        adjusted_vels = rv_data_df["truevel"] + vel_offset
+        vel_df = pd.DataFrame({"mnvel": adjusted_vels})
+        rv_data_df = pd.concat([rv_data_df, vel_df], axis=1)
+
+        # Add true anomaly
+        nu_df = pd.DataFrame({"nu": nu_array})
+        rv_data_df = pd.concat([rv_data_df, nu_df], axis=1)
+
+        # Force floats for float columns
+        columns = ["time", "mnvel", "truevel", "errvel", "nu", "time_year"]
+        rv_data_df[columns] = rv_data_df[columns].apply(pd.to_numeric)
+        return rv_data_df

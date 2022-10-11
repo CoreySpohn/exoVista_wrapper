@@ -5,6 +5,7 @@ import astropy.io.fits as fits
 import astropy.units as u
 import numpy as np
 import pandas as pd
+from scipy import optimize
 from tqdm import tqdm
 
 
@@ -103,10 +104,10 @@ def plot_planet_positions(ax, system, cmap, ind):
     for i, planet in enumerate(system.planets):
         color = cmap(cvals[i])
         ms = planet_marker_size(
-            planet.vectors.at[ind, "z"] * u.m,
-            planet.vectors.z * u.m,
+            planet.vectors.at[ind, "z"],
+            planet.vectors.z,
             base_size=5 + planet.radius.to(u.R_earth).value,
-            factor=0.1,
+            factor=0.2,
         )
         ax.scatter(
             planet.vectors.x[ind] * (u.m.to(u.AU)),
@@ -115,8 +116,10 @@ def plot_planet_positions(ax, system, cmap, ind):
             color=color,
             s=ms,
         )
-        ax.set_xlim([-8, 8])
-        ax.set_ylim([-8, 8])
+        ax.set_xlim([-10, 10])
+        ax.set_ylim([-10, 10])
+        ax.set_xlabel("AU")
+        ax.set_ylabel("AU")
     return ax
 
 
@@ -128,12 +131,7 @@ def planet_marker_size(z, all_z, base_size=5, factor=0.5):
 
     # Want being at max z to correspond to a factor of 1 and min z
     # to be a factor of negative 1
-    scaled_z = (
-        2
-        * (z.decompose().value - min(all_z).decompose().value)
-        / z_range.decompose().value
-        - 1
-    )
+    scaled_z = 2 * (z - min(all_z)) / z_range - 1
 
     marker_size = base_size * (1 + factor * scaled_z)
 
